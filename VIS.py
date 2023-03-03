@@ -384,5 +384,3 @@ def update_graph2(selected_country):
     return new_figure
 
 
-if __name__ == '__main__':
-    app.run_server(debug=True, port='8096')
