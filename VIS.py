@@ -26,13 +26,14 @@ colors = {
 
 # import data
 kenya_data = pd.read_csv('kenya.csv', low_memory=False)
+rwanda_data = pd.read_csv('rwanda.csv', low_memory=False)
 
-all_data = kenya_data
+all_data = kenya_data.append([rwanda_data])
 all_data = all_data[
     ['indicator', 'classif2', 'time',
      'sex', 'sex.label', 'classif1', 'classif1.label', 'classif2.label', 'obs_value', 'ref_area.label']]
 
-#rename long values
+# rename long values
 mapping = {'Age (Youth bands): 15-19': '15-19', 'Age (Youth bands): 20-24': '20-24',
            'Age (Youth bands): 25-29': '25-29', 'Household type: One person': 'One Person',
            'Household type: Couple without children': 'Couple without children',
@@ -143,6 +144,33 @@ basic_total = youth_age_education.loc[youth_age_education['classif2'] == 'EDU_AG
 intermediate_total = youth_age_education.loc[youth_age_education['classif2'] == 'EDU_AGGREGATE_INT', 'obs_value'].sum()
 advanced_total = youth_age_education.loc[youth_age_education['classif2'] == 'EDU_AGGREGATE_ADV', 'obs_value'].sum()
 
+# OCU_ISCO08_0
+youth_skill_education = kenya_data[
+    (kenya_data["classif1"].isin(['OCU_ISCO08_0', 'OCU_ISCO08_1', 'OCU_ISCO08_2', 'OCU_ISCO08_3',
+                                  'OCU_ISCO08_4', 'OCU_ISCO08_5', 'OCU_ISCO08_6', 'OCU_ISCO08_7',
+                                  'OCU_ISCO08_8', 'OCU_ISCO08_9', 'OCU_ISCO08_X']))
+    & (kenya_data["classif2"].isnull() == False) & (kenya_data["classif2"].isin(
+        ['EDU_AGGREGATE_LTB', 'EDU_AGGREGATE_ADV', 'EDU_AGGREGATE_BAS', 'EDU_AGGREGATE_INT']))
+    & (kenya_data["obs_value"].isnull() == False) & (kenya_data["obs_value"] > 90)]
+
+youth_skill_education = youth_skill_education[
+    ['classif2.label', 'sex', 'sex.label', 'classif1', 'classif1.label', 'classif2', 'obs_value']]
+
+youth_age_employment_education = kenya_data[
+    (kenya_data["classif1"].isin(['STE_AGGREGATE_EES', 'STE_AGGREGATE_SLF', 'STE_AGGREGATE_X']))
+    & (kenya_data["classif2"].isnull() == False) & (kenya_data["classif2"].isin(
+        ['EDU_AGGREGATE_LTB', 'EDU_AGGREGATE_ADV', 'EDU_AGGREGATE_BAS', 'EDU_AGGREGATE_INT']))
+    & (kenya_data["obs_value"].isnull() == False) & (kenya_data["obs_value"] > 90)]
+
+youth_age_employment_education = youth_age_employment_education[
+    ['classif2.label', 'sex', 'sex.label', 'classif1', 'classif1.label', 'classif2', 'obs_value']]
+
+rename_mapping = {'Status in employment (Aggregate): Employees': 'Employee _',
+                  'Status in employment (Aggregate): Self-employed': 'Self-Employed _',
+                  'Status in employment (Aggregate): Workers not classifiable by status': 'Unknown _'}
+
+youth_age_employment_education['classif1.label'] = youth_age_employment_education['classif1.label'].map(rename_mapping)
+
 # create dataframe that will be used to generate pie chart
 totals_df = pd.DataFrame({'EducationLevels': ['Less than Basic',
                                               'Basic',
@@ -150,7 +178,7 @@ totals_df = pd.DataFrame({'EducationLevels': ['Less than Basic',
                                               'Advanced'],
                           'Values': [less_than_basec_total, basic_total, intermediate_total, advanced_total]})
 
-#draw pie chart
+# draw pie chart
 totals_pie = px.pie(totals_df, values='Values', names='EducationLevels')
 
 totals_pie.update_traces(title_font=dict(size=25,
@@ -169,7 +197,7 @@ totals_pie.update_layout(legend=dict(
 ))
 
 # draw barc chart of monthly earning
-fig3 = px.bar(monthly_earning_household_kids, x="classif1.label", y="obs_value",
+fig3 = px.bar(youth_age_employment_education, x="classif1.label", y="obs_value",
               color="classif2.label",
               barmode='group')
 fig3.update_layout(legend=dict(
@@ -193,7 +221,7 @@ fig.update_layout(legend=dict(
     x=1
 ))
 
-#specify available dropdown options
+# specify available dropdown options
 gender_options = [{'label': i, 'value': i} for i in youth_age_transition['sex.label'].unique()]
 country_options = [{'label': i, 'value': i} for i in youth_age_transition['ref_area.label'].unique()]
 
@@ -202,18 +230,24 @@ app.layout = html.Div([
     dbc.Row(
         [
             dbc.Col(
+
                 html.Div(
-                    [html.H1(children='Youth Employment Trends'),
-                     html.P(['Transition trends across different age groups', html.Br(),
-                             html.A('ILO Data Youth Unemployment Challenge',
-                                    href='https://urlhere.report',
-                                    target='_blank'),
-                             html.Br(),
-                             ]
-                            ),
+                    html.P("")
+                ), md=2
+            ),
+            dbc.Col(
+                html.Div(
+                    [html.H1(children='Youth Employment Trends (2019)'),
+
                      html.Br()
-                     ]), md=12
-            )
+                     ]), md=8
+            ),
+            dbc.Col(
+
+                html.Div(
+                    html.P("")
+                ), md=2
+            ),
         ]
     ),
     dbc.Row([
@@ -277,11 +311,45 @@ app.layout = html.Div([
     ),
     dbc.Row([
         dbc.Col(
-
             html.Div(
                 html.P("")
-            ), md=3
+            ), md=1
         ),
+        dbc.Col([
+
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.Hr(className="my-2"),
+                            html.H4(
+                                "Education Level With Most Persons:"
+                            ),
+
+                        ],
+                        className="rounded-3",
+                        style={"color": "white", "background-color": "#374649"}
+                    ),
+                    md=12,
+                )
+            ]),
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.Hr(className="my-2"),
+                            html.H4(
+                                "Skill Level With Most Youth:"
+                            ),
+                            html.Div(id='output-skill', children='')
+                        ],
+                        className="rounded-3",
+                        style={"color": "white", "background-color": "#374649"}
+                    ),
+                    md=12,
+                )
+            ])
+        ]),
         dbc.Col(
             html.Div(
                 [
@@ -289,11 +357,44 @@ app.layout = html.Div([
                               figure=fig3)
                 ]), md=6
         ),
-        dbc.Col(
+        dbc.Col([
 
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.Hr(className="my-2"),
+                            html.H4(
+                                "Employment Status With Most Youth:"
+                            ),
+                            html.Div(id='output-text', children='')
+                        ],
+                        className="rounded-3",
+                        style={"color": "white", "background-color": "#374649"}
+                    ),
+                    md=12,
+                )
+            ]),
+            dbc.Row([
+                dbc.Col(
+                    html.Div(
+                        [
+                            html.Hr(className="my-2"),
+                            html.H4(
+                                "Multiple Job Holding Status With Most Youth:"
+                            ),
+                        ],
+                        className="rounded-3",
+                        style={"color": "white", "background-color": "#374649"}
+                    ),
+                    md=12,
+                )
+            ])
+        ]),
+        dbc.Col(
             html.Div(
                 html.P("")
-            ), md=3
+            ), md=1
         )
     ]
 
@@ -301,7 +402,39 @@ app.layout = html.Div([
 
 ])
 
+
 # event handlers section, for the different data selections
+@app.callback(Output('output-text', 'children'),
+              Input('gender-dropdown', 'value'))
+def update_output_div(selected_country):
+    filtered_data = youth_age_employment_education[youth_age_employment_education['sex.label'] == selected_country]
+    input_text = filtered_data['classif1.label'].value_counts()[:1].sort_values(ascending=False)
+    return f'{input_text}'
+
+
+@app.callback(Output('output-skill', 'children'),
+              Input('gender-dropdown', 'value'))
+def update_output_div(selected_country):
+    filtered_data = youth_skill_education[youth_skill_education['sex.label'] == selected_country]
+    input_text = filtered_data['classif1.label'].value_counts()[:1].sort_values(ascending=False)
+    return f'{input_text}'
+
+
+# @app.callback(Output('output-text', 'children'),
+#               Input('gender-dropdown', 'value'))
+# def update_output_div(selected_country):
+#     filtered_data = youth_age_employment_education[youth_age_employment_education['sex.label'] == selected_country]
+#     input_text = filtered_data['classif1.label'].value_counts()[:1].sort_values(ascending=False)
+#     return f'{input_text}'
+#
+#
+# @app.callback(Output('output-text', 'children'),
+#               Input('gender-dropdown', 'value'))
+# def update_output_div(selected_country):
+#     filtered_data = youth_age_employment_education[youth_age_employment_education['sex.label'] == selected_country]
+#     input_text = filtered_data['classif1.label'].value_counts()[:1].sort_values(ascending=False)
+#     return f'{input_text}'
+
 
 @app.callback(
     Output('happiness-graph', 'figure'),
@@ -361,26 +494,28 @@ def update_graph2(selected_country):
     Output('graph3-graph', 'figure'),
     Input('gender-dropdown', 'value'))
 def update_graph2(selected_country):
-    filtered_data = monthly_earning_household_kids[monthly_earning_household_kids['sex.label'] == selected_country]
+    filtered_data = youth_age_employment_education[youth_age_employment_education['sex.label'] == selected_country]
     new_figure = px.bar(filtered_data, x="classif1.label", y="obs_value",
                         color="classif2.label",
                         barmode='group')
 
-    new_figure.update_layout(title='Mean Monthly Earning Per Household with Children',
+    new_figure.update_layout(title='Status of Employment By Education Level(Youth and Non-Youth)',
                              paper_bgcolor=colors['LIGHT_BLACK'],
                              plot_bgcolor=colors['LIGHT_BLACK'],
                              font={'color': colors['WHITE']},
                              xaxis_tickfont_size=14,
                              xaxis=dict(showgrid=True,
-                                        title='Household Categories',
+                                        title='Status of Employment',
                                         titlefont_size=16,
                                         tickfont_size=14,
                                         ),
                              yaxis=dict(showgrid=True,
-                                        title='Mean Monthly Income (Lcy)',
+                                        title='Number in thousands',
                                         titlefont_size=16,
                                         tickfont_size=14,
                                         ), showlegend=True)
     return new_figure
 
 
+if __name__ == '__main__':
+    app.run_server(debug=False, port='8096')
